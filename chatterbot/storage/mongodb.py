@@ -154,6 +154,9 @@ class MongoDatabaseAdapter(StorageAdapter):
         if 'tags' in kwargs:
             kwargs['tags'] = list(set(kwargs['tags']))
 
+        if 'search_text' not in kwargs:
+            kwargs['search_text'] = self.stemmer.stem(kwargs['text'])
+
         inserted = self.statements.insert_one(kwargs)
 
         kwargs['id'] = inserted.inserted_id
@@ -168,12 +171,17 @@ class MongoDatabaseAdapter(StorageAdapter):
             if 'tags' in statement:
                 statement['tags'] = list(set(statement['tags']))
 
+            if 'search_text' not in statement:
+                statement['search_text'] = self.stemmer.stem(statement['text'])
+
         self.statements.insert_many(statements)
 
     def update(self, statement):
         data = statement.serialize()
         data.pop('id', None)
         data.pop('tags', None)
+
+        data['search_text'] = self.stemmer.stem(data['text'])
 
         update_data = {
             '$set': data
@@ -228,7 +236,7 @@ class MongoDatabaseAdapter(StorageAdapter):
         """
         self.statements.delete_one({'text': statement_text})
 
-    def get_response_statements(self, page_size=1000):
+    def get_response_statements(self, text=None, page_size=1000):
         """
         Return only statements that are in response to another statement.
         A statement must exist which lists the closest matching statement in the

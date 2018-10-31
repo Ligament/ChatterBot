@@ -63,6 +63,9 @@ class DjangoStorageAdapter(StorageAdapter):
 
         tags = kwargs.pop('tags', [])
 
+        if 'search_text' not in kwargs:
+            kwargs['search_text'] = self.stemmer.stem(kwargs['text'])
+
         statement = Statement(**kwargs)
 
         statement.save()
@@ -90,6 +93,9 @@ class DjangoStorageAdapter(StorageAdapter):
 
             tags = set(statement_data.pop('tags', []))
 
+            if 'search_text' not in statement_data:
+                statement_data['search_text'] = self.stemmer.stem(statement_data['text'])
+
             statement = Statement.objects.create(**statement_data)
 
             tags_to_add = []
@@ -116,6 +122,7 @@ class DjangoStorageAdapter(StorageAdapter):
         else:
             statement = Statement.objects.create(
                 text=statement.text,
+                search_text=self.stemmer.stem(statement.text),
                 conversation=statement.conversation,
                 in_response_to=statement.in_response_to,
                 created_at=statement.created_at
@@ -157,7 +164,7 @@ class DjangoStorageAdapter(StorageAdapter):
         Statement.objects.all().delete()
         Tag.objects.all().delete()
 
-    def get_response_statements(self, page_size=1000):
+    def get_response_statements(self, text=None, page_size=1000):
         """
         Return only statements that are in response to another statement.
         A statement must exist which lists the closest matching statement in the
